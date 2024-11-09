@@ -73,36 +73,55 @@ def seed_table():
 # update a product - /products/id - PUT or PATCH
 #  delete a product - /products/id - DELETE
 
-    # CRUD for products
-    # Read - Get method, of CRUD
-    @app.route("/products")
-    def get_products():
-        # stmt stand for statement
-        stmt = db.select(Product) # SELECT * FROM products;
-        products_list = db.session.scalars(stmt)
-        data = products_schema.dump(products_list)
+# CRUD for products
+# Read - Get method, of CRUD
+@app.route("/products")
+def get_products():
+    # stmt stand for statement
+    stmt = db.select(Product) # SELECT * FROM products;
+    products_list = db.session.scalars(stmt)
+    data = products_schema.dump(products_list)
+    return data
+
+@app.route("/products/<int:product_id>")
+def get_product(product_id):
+    # delete a product - /products/id - DELETE# SELECT * FROM products WHERE id+product_id
+    stmt = db.select(Product).filter_by(id=product_id)
+    product = db.session.scalar(stmt)
+    if product:
+        data = product_schema.dump(product)
         return data
-    
-    @app.route("/products/<int:product_id>")
-    def get_product(product_id):
-        stmt = db.select(Product).filter_by(id=product_id) # SELECT * FROM products WHERE id+product_id
-        product = db.session.scalar(stmt)
-        if product:
-            data = product_schema.dump(product)
-            return data
-        else:
-            return{"message": f"Product with id {product_id} does not exist"}, 404
-            
-    # C of CRUD - CREATE - POST 
-    @app.route("/products", method=["POST"])
-    def create_product():
-        body_data = request.get_json()
-        new_product = Product(
-        name=body_data.get("name"),
-        description=body_data.get("descritpion"),
-        price=body_data.get("price"),
-        stock=body_data.get("stock")
-        )
-        db.session.add(new_product)
+    else:
+        return{"message": f"Product with id {product_id} does not exist"}, 404
+
+# C of CRUD - CREATE - POST 
+@app.route("/products", method=["POST"])
+def create_product():
+    body_data = request.get_json()
+    new_product = Product(
+    name=body_data.get("name"),
+    description=body_data.get("descritpion"),
+    price=body_data.get("price"),
+    stock=body_data.get("stock")
+    )
+    db.session.add(new_product)
+    db.session.commit()
+    return product_schema.dump(new_product), 201
+
+# delete a product - /products/id - DELETE
+@app.route("/products/<int:products_id>", method=["DELETE"])
+def delete_product(product_id):
+    #  find the product with product id from db
+    stmt = db.select(Product).where(Product.id==product_id)
+    product = db.session.scalar(stmt)
+    #  if product exits
+    if product:
+        #  delete the product
+        db.session.delete(product)
         db.session.commit()
-        return product_schema.dump(new_product), 201
+        #  repspond with messgae deleted
+        return {"message": f"Product '{product.name}' deleted successfully"}
+    #  else
+    else:
+        # repsond messgae with (f-string) that id does not exist
+        return {"message": f"Product with id {product_id} does not exist"}, 404
